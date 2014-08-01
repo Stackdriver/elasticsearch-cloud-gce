@@ -46,10 +46,34 @@ public class GceComputeServiceImpl extends AbstractLifecycleComponent<GceCompute
     implements GceComputeService {
 
     private final String project;
+    
     private final String zone;
+    
+    // Allow discovery across multiple zones for balancing cluster
+    private final String[] zones;
 
     @Override
     public Collection<Instance> instances() {
+        if (zones != null && zones.length > 0) {
+            // multiple zones, add all of them
+            ArrayList<Instance> instanceResults = new ArrayList<Instance>();
+            for (final String az : zones) {
+                instanceResults.addAll(this.instancesForZone(project, az));
+            }
+            return instanceResults;
+        } else {
+            // single zone configured, add those instances (legacy)
+            return this.instancesForZone(project, zone);
+        }
+    }
+    
+    /**
+     * Look up the instances in a project and a single zone
+     * 
+     * @param zone name of a single availability zone
+     * @return Collection of 0 or more Instance objects in that zone
+     */
+    private Collection<Instance> instancesForZone(final String project, final String zone) {
         try {
             logger.debug("get instances for project [{}], zone [{}]", project, zone);
 
@@ -81,6 +105,7 @@ public class GceComputeServiceImpl extends AbstractLifecycleComponent<GceCompute
 
         this.project = componentSettings.get(Fields.PROJECT, settings.get("cloud.gce." + Fields.PROJECT));
         this.zone = componentSettings.get(Fields.ZONE, settings.get("cloud.gce." + Fields.ZONE));
+        this.zones = componentSettings.getAsArray(Fields.ZONES, settings.getAsArray("cloud.gce" + Fields.ZONES));
     }
 
     public synchronized Compute client() {

@@ -47,7 +47,12 @@ public class GceDiscovery extends ZenDiscovery {
                         DiscoveryNodeService discoveryNodeService, GceComputeService gceComputeService,
                         NetworkService networkService) {
         super(settings, clusterName, threadPool, transportService, clusterService, nodeSettingsService, discoveryNodeService, pingService, Version.CURRENT);
+        
+        // attach the node attributes provider to set the zone attribute
+        discoveryNodeService.addCustomAttributeProvider(new GceNodeAttributes(settings));
+        
         if (settings.getAsBoolean("cloud.enabled", true)) {
+            this.logger.info("Starting up GCE Discovery");
             ImmutableList<? extends ZenPing> zenPings = pingService.zenPings();
             UnicastZenPing unicastZenPing = null;
             for (ZenPing zenPing : zenPings) {
